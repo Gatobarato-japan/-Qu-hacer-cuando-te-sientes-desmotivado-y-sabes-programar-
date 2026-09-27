@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deposit Classifier MVP</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #030712;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
+    </style>
+</head>
+<body class="min-h-screen selection:bg-blue-600 selection:text-white">
+
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute top-1/2 -right-40 w-96 h-96 bg-blue-900/10 rounded-full blur-3xl"></div>
+    </div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 pb-6 border-b border-gray-800">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xl shadow-lg">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-white">Deposit Classifier MVP</h1>
+                    <p class="text-gray-400 text-xs sm:text-sm mt-0.5">Reduce la fatiga mental procesando y clasificando ingresos y gastos al instante.</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="loadSampleData()" class="px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-blue-500/50 text-gray-300 hover:text-white text-xs sm:text-sm font-medium transition-all flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles text-blue-400"></i>
+                    <span>Cargar Ejemplo</span>
+                </button>
+            </div>
+        </header>
+
+        <section class="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 shadow-xl mb-8">
+            <div class="flex items-center gap-2 mb-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <i class="fa-solid fa-circle-info text-blue-400"></i>
+                <span>Acerca del sistema</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                <div class="space-y-1.5">
+                    <h3 class="font-semibold text-white text-xs uppercase tracking-wider text-blue-400">¿Qué es?</h3>
+                    <p class="text-gray-400 text-xs leading-relaxed">Una utilidad ligera y directa para procesar reportes monetarios crudos o extractos de depósitos sin depender de APIs bancarias complejas ni intermediarios.</p>
+                </div>
+                <div class="space-y-1.5">
+                    <h3 class="font-semibold text-white text-xs uppercase tracking-wider text-blue-400">Origen</h3>
+                    <p class="text-gray-400 text-xs leading-relaxed">Creado para creadores independientes, freelancers y desarrolladores que reciben múltiples transferencias dispersas y necesitan ordenar registros masivos de manera instantánea.</p>
+                </div>
+                <div class="space-y-1.5">
+                    <h3 class="font-semibold text-white text-xs uppercase tracking-wider text-blue-400">¿Cómo usarlo?</h3>
+                    <p class="text-gray-400 text-xs leading-relaxed">Pega tus movimientos en formato $MONTO DESCRIPCIÓN (uno por línea). El motor reconocerá patrones guardados automáticamente o te permitirá etiquetar los pendientes.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                
+                <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block font-semibold text-gray-200 text-xs uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-file-arrow-down text-blue-400"></i>
+                            <span>Entrada de Movimientos</span>
+                        </label>
+                        <label class="cursor-pointer text-xs bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-medium">
+                            <i class="fa-solid fa-file-csv"></i>
+                            <span>Importar CSV</span>
+                            <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
+                        </label>
+                    </div>
+
+                    <textarea id="depositsInput" 
+                        class="w-full h-40 bg-gray-950 border border-gray-800 rounded-xl p-4 text-gray-200 code-font text-xs sm:text-sm focus:outline-none focus:border-blue-500 transition-all resize-y shadow-inner"
+                        placeholder="Pega texto libre o formato CSV:&#10;2026-09-20 | PATREON*CREATOR | +500&#10;2026-09-21 | YOUTUBE PAYMENTS | +1200&#10;2026-09-22 | HOSTING SERVER | -80&#10;2026-09-23 | ACH TRANSFER 8392 | +350"></textarea>
+
+                    <div class="mt-4 flex items-center gap-3">
+                        <button onclick="processAndClassify()" class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>Procesar y Clasificar</span>
+                        </button>
+                        <button onclick="clearInput()" class="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl transition-all" title="Limpiar">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-gray-200 text-xs uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-network-wired text-blue-400"></i>
+                            <span>Patrones Conocidos</span>
+                        </h3>
+                        <span id="patternCountBadge" class="px-2 py-0.5 rounded-full text-[10px] bg-gray-800 text-gray-400 code-font font-bold">0</span>
+                    </div>
+                    
+                    <div class="mb-4 flex gap-2">
+                        <input type="text" id="newKeyword" placeholder="Palabra (ej. YOUTUBE)" class="w-1/2 bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500 code-font">
+                        <input type="text" id="newSource" placeholder="Fuente (ej. YouTube)" class="w-1/2 bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500">
+                        <button onclick="manualAddPattern()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-xs transition-all">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <div id="patternsContainer" class="space-y-2.5 max-h-48 overflow-y-auto pr-1"></div>
+                </div>
+
+            </div>
+
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                
+                <div id="emptyState" class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-2xl p-12 text-center shadow-xl flex flex-col items-center justify-center min-h-[480px]">
+                    <div class="w-16 h-16 rounded-full bg-blue-600/10 text-blue-400 flex items-center justify-center text-2xl mb-4 border border-blue-500/20">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Sin movimientos procesados</h3>
+                    <p class="text-gray-400 text-xs sm:text-sm max-w-sm mb-6">Pega tus datos, importa un CSV o carga el ejemplo para ver el motor en acción.</p>
+                    <button onclick="loadSampleData()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold uppercase tracking-wider rounded-xl shadow-lg shadow-blue-600/20 transition-all">
+                        Cargar datos de prueba
+                    </button>
+                </div>
+
+                <div id="resultsSection" class="hidden flex flex-col gap-6">
+                    
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 shadow-lg flex flex-col justify-between">
+                            <div class="text-gray-400 text-[11px] font-semibold uppercase tracking-wider">Ingresos</div>
+                            <div id="statIncome" class="text-base sm:text-xl font-bold text-emerald-400 mt-1 code-font">$0.00</div>
+                        </div>
+                        <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 shadow-lg flex flex-col justify-between">
+                            <div class="text-gray-400 text-[11px] font-semibold uppercase tracking-wider">Gastos</div>
+                            <div id="statExpenses" class="text-base sm:text-xl font-bold text-rose-400 mt-1 code-font">$0.00</div>
+                        </div>
+                        <div class="bg-gray-900/80 border border-gray-800 rounded-2xl p-4 shadow-lg flex flex-col justify-between">
+                            <div class="text-gray-400 text-[11px] font-semibold uppercase tracking-wider">Neto</div>
+                            <div id="statNet" class="text-base sm:text-xl font-bold text-white mt-1 code-font">$0.00</div>
+                        </div>
+                    </div>
+
+                    <div id="attentionSection" class="hidden bg-amber-950/20 border border-amber-500/30 rounded-2xl p-5 shadow-xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2 text-xs font-semibold text-amber-400 uppercase tracking-wider">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span id="attentionCountText">0 movimientos requieren atención</span>
+                            </div>
+                        </div>
+                        <div id="attentionList" class="space-y-2 mb-4"></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 shadow-xl">
+                        <h3 class="font-semibold text-gray-200 text-xs uppercase tracking-wider flex items-center gap-2 mb-4">
+                            <i class="fa-solid fa-chart-bar text-blue-400"></i>
+                            <span>Fuentes de Ingresos</span>
+                        </h3>
+                        <div id="sourceBreakdown" class="space-y-3"></div>
+                    </div>
+
+                    <div class="bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 shadow-xl overflow-hidden">
+                        <div class="flex items-center justify-between gap-4 mb-6">
+                            <div class="relative flex-1">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-500">
+                                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                                </span>
+                                <input type="text" id="tableSearch" oninput="filterTable()" placeholder="Buscar en movimientos..." class="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="exportCSV()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl text-xs font-semibold transition-all">CSV</button>
+                                <button onclick="exportJSON()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl text-xs font-semibold transition-all">JSON</button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-xl border border-gray-800">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-950 text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800">
+                                    <tr>
+                                        <th class="py-3 px-4 font-semibold">Fecha</th>
+                                        <th class="py-3 px-4 font-semibold">Monto / Tipo</th>
+                                        <th class="py-3 px-4 font-semibold">Descripción / Diagnóstico</th>
+                                        <th class="py-3 px-4 font-semibold text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody" class="divide-y divide-gray-800/60 text-xs"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        let currentTransactions = [];
+
+        const DEFAULT_PATTERNS = {
+            "PATREON": "Patreon",
+            "YOUTUBE": "YouTube",
+            "KO-FI": "Ko-fi",
+            "PAYPAL": "PayPal",
+            "HOSTING": "Servidores",
+            "TWITCH": "Twitch"
+        };
+
+        const PatternStorage = {
+            getPatterns() {
+                const stored = localStorage.getItem('mvp_deposit_patterns');
+                if (!stored) {
+                    localStorage.setItem('mvp_deposit_patterns', JSON.stringify(DEFAULT_PATTERNS));
+                    return DEFAULT_PATTERNS;
+                }
+                return JSON.parse(stored);
+            },
+            addPattern(keyword, source) {
+                const patterns = this.getPatterns();
+                const key = keyword.trim().toUpperCase();
+                if (!key || !source.trim()) return false;
+                patterns[key] = source.trim();
+                localStorage.setItem('mvp_deposit_patterns', JSON.stringify(patterns));
+                renderPatterns();
+                showToast(`Patrón "${key}" guardado`, 'success');
+                return true;
+            },
+            removePattern(keyword) {
+                const patterns = this.getPatterns();
+                delete patterns[keyword];
+                localStorage.setItem('mvp_deposit_patterns', JSON.stringify(patterns));
+                renderPatterns();
+                showToast(`Patrón eliminado`, 'info');
+            },
+            findMatch(text) {
+                const patterns = this.getPatterns();
+                const upperText = text.toUpperCase();
+                for (const [keyword, source] of Object.entries(patterns)) {
+                    if (upperText.includes(keyword)) {
+                        return { source, keyword };
+                    }
+                }
+                return null;
+            }
+        };
+
+        function parseRawData(text) {
+            const lines = text.trim().split('\n');
+            const items = [];
+
+            lines.forEach((line, index) => {
+                const cleanLine = line.trim();
+                if (!cleanLine) return;
+
+                let parts = cleanLine.includes('|') ? cleanLine.split('|') : cleanLine.split(',');
+                
+                let date = new Date().toISOString().split('T')[0];
+                let rawAmountStr = "";
+                let description = "";
+
+                if (parts.length >= 3) {
+                    date = parts[0].trim();
+                    description = parts[1].trim();
+                    rawAmountStr = parts[2].trim();
+                } else if (parts.length === 2) {
+                    if (parts[0].match(/\d{4}-\d{2}-\d{2}/)) {
+                        date = parts[0].trim();
+                    } else {
+                        description = parts[0].trim();
+                    }
+                    rawAmountStr = parts[1].trim();
+                } else {
+                    let match = cleanLine.match(/(?:\$|USD|EUR|€)?\s*([+-]?[\d,]+\.?\d*)\s*(.*)/i);
+                    if (match) {
+                        rawAmountStr = match[1];
+                        description = match[2] ? match[2].trim() : cleanLine;
+                    }
+                }
+
+                let cleanNumStr = rawAmountStr.replace(/[^0-9.-]/g, '');
+                let amount = parseFloat(cleanNumStr);
+                
+                if (isNaN(amount)) return;
+
+                let type = 'INGRESO';
+                if (rawAmountStr.includes('-') || amount < 0) {
+                    type = 'GASTO';
+                    amount = Math.abs(amount);
+                }
+
+                items.push({
+                    id: index + 1,
+                    date: date,
+                    type: type,
+                    amount: amount,
+                    description: description || cleanLine
+                });
+            });
+
+            return items;
+        }
+
+        function handleCSVImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('depositsInput').value = e.target.result;
+                processAndClassify();
+                showToast('CSV importado con éxito', 'success');
+            };
+            reader.readAsText(file);
+        }
+
+        function classifyItem(item) {
+            const matchResult = PatternStorage.findMatch(item.description);
+            if (matchResult) {
+                return {
+                    ...item,
+                    source: matchResult.source,
+                    status: 'identified',
+                    reason: `🟢 ${matchResult.source}\nCoincidencia: ${matchResult.keyword} (Confianza: Alta)`
+                };
+            } else {
+                return {
+                    ...item,
+                    source: item.type === 'GASTO' ? 'Gasto Operativo' : 'Desconocido',
+                    status: item.type === 'GASTO' ? 'identified' : 'unknown',
+                    reason: item.type === 'GASTO' ? '🟢 Gasto clasificado' : '🟡 Desconocido\nNo coincide con ningún patrón guardado.'
+                };
+            }
+        }
+
+        function processAndClassify() {
+            const text = document.getElementById('depositsInput').value.trim();
+            if (!text) {
+                showToast('Ingresa movimientos o importa un archivo.', 'warning');
+                return;
+            }
+
+            const rawItems = parseRawData(text);
+            if (rawItems.length === 0) {
+                showToast('No se reconocieron montos válidos.', 'error');
+                return;
+            }
+
+            currentTransactions = rawItems.map(item => classifyItem(item));
+            renderDashboard(currentTransactions);
+            showToast(`${currentTransactions.length} movimientos procesados`, 'success');
+        }
+
+        function renderDashboard(data) {
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('resultsSection').classList.remove('hidden');
+
+            let totalIncome = data.filter(i => i.type === 'INGRESO').reduce((acc, i) => acc + i.amount, 0);
+            let totalExpenses = data.filter(i => i.type === 'GASTO').reduce((acc, i) => acc + i.amount, 0);
+            let net = totalIncome - totalExpenses;
+
+            document.getElementById('statIncome').textContent = formatCurrency(totalIncome);
+            document.getElementById('statExpenses').textContent = formatCurrency(totalExpenses);
+            document.getElementById('statNet').textContent = formatCurrency(net);
+
+            renderAttentionSection(data);
+            renderSourceBreakdown(data);
+            renderTable(data);
+        }
+
+        function renderAttentionSection(data) {
+            const unknownItems = data.filter(i => i.status === 'unknown');
+            const section = document.getElementById('attentionSection');
+            const list = document.getElementById('attentionList');
+            const countText = document.getElementById('attentionCountText');
+
+            if (unknownItems.length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            countText.textContent = `⚠️ ${unknownItems.length} movimientos requieren atención`;
+            list.innerHTML = '';
+
+            unknownItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-900/90 border border-amber-500/20 p-3 rounded-xl gap-3 text-xs';
+                div.innerHTML = `
+                    <div class="code-font text-gray-200">
+                        <span class="text-amber-400 font-bold">+$${item.amount.toFixed(2)}</span> — ${escapeHtml(item.description)}
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-gray-400 text-[10px] mr-1">¿Qué es?</span>
+                        <button onclick="quickResolve(${item.id}, 'YouTube')" class="px-2.5 py-1 bg-gray-800 hover:bg-blue-600 text-gray-300 hover:text-white rounded-lg transition-all">YouTube</button>
+                        <button onclick="quickResolve(${item.id}, 'Patreon')" class="px-2.5 py-1 bg-gray-800 hover:bg-blue-600 text-gray-300 hover:text-white rounded-lg transition-all">Patreon</button>
+                        <button onclick="quickResolve(${item.id}, 'PayPal')" class="px-2.5 py-1 bg-gray-800 hover:bg-blue-600 text-gray-300 hover:text-white rounded-lg transition-all">PayPal</button>
+                        <button onclick="promptCustomResolve(${item.id}, '${escapeHtml(item.description)}')" class="px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all">Otro...</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function quickResolve(id, sourceName) {
+            const item = currentTransactions.find(i => i.id === id);
+            if (!item) return;
+            const keyword = item.description.split(' ')[0].toUpperCase();
+            PatternStorage.addPattern(keyword, sourceName);
+            currentTransactions = currentTransactions.map(i => classifyItem(i));
+            renderDashboard(currentTransactions);
+        }
+
+        function promptCustomResolve(id, description) {
+            const sourceName = prompt(`¿A qué fuente pertenece?\n"${description}"`, "Cliente X");
+            if (sourceName && sourceName.trim()) {
+                const keyword = description.split(' ')[0].toUpperCase();
+                PatternStorage.addPattern(keyword, sourceName.trim());
+                currentTransactions = currentTransactions.map(i => classifyItem(i));
+                renderDashboard(currentTransactions);
+            }
+        }
+
+        function renderSourceBreakdown(data) {
+            const container = document.getElementById('sourceBreakdown');
+            container.innerHTML = '';
+
+            const sources = {};
+            let total = 0;
+
+            data.filter(i => i.type === 'INGRESO').forEach(item => {
+                sources[item.source] = (sources[item.source] || 0) + item.amount;
+                total += item.amount;
+            });
+
+            if (total === 0) return;
+
+            Object.entries(sources).sort((a, b) => b[1] - a[1]).forEach(([source, amount]) => {
+                const pct = ((amount / total) * 100).toFixed(1);
+                const div = document.createElement('div');
+                div.className = 'space-y-1';
+                div.innerHTML = `
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300">${escapeHtml(source)}</span>
+                        <span class="text-gray-400 code-font">${formatCurrency(amount)} <span class="text-blue-400">(${pct}%)</span></span>
+                    </div>
+                    <div class="w-full bg-gray-950 h-2 rounded-full overflow-hidden border border-gray-800">
+                        <div class="bg-blue-600 h-full rounded-full" style="width: ${pct}%"></div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-800/40 transition-colors';
+
+                const amountColor = item.type === 'INGRESO' ? 'text-emerald-400' : 'text-rose-400';
+                const sign = item.type === 'INGRESO' ? '+' : '-';
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-gray-400 code-font">${escapeHtml(item.date)}</td>
+                    <td class="py-3 px-4 font-bold ${amountColor} code-font">${sign}$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4">
+                        <div class="font-medium text-gray-200 code-font">${escapeHtml(item.description)}</div>
+                        <div class="text-[11px] text-gray-400 whitespace-pre-line mt-0.5">${escapeHtml(item.reason)}</div>
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                        ${item.status === 'unknown' ? `<button onclick="promptCustomResolve(${item.id}, '${escapeHtml(item.description)}')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px]">Etiquetar</button>` : '<span class="text-gray-500">-</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderPatterns() {
+            const patterns = PatternStorage.getPatterns();
+            const container = document.getElementById('patternsContainer');
+            document.getElementById('patternCountBadge').textContent = Object.keys(patterns).length;
+
+            container.innerHTML = '';
+            Object.entries(patterns).forEach(([keyword, source]) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between bg-gray-950 border border-gray-800 p-2 rounded-xl text-xs';
+                div.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <span class="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 font-mono rounded text-[11px]">${escapeHtml(keyword)}</span>
+                        <span class="text-gray-400">→</span>
+                        <span class="text-gray-200 truncate">${escapeHtml(source)}</span>
+                    </div>
+                    <button onclick="PatternStorage.removePattern('${escapeHtml(keyword)}')" class="text-gray-500 hover:text-red-400 px-1.5"><i class="fa-solid fa-xmark"></i></button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function manualAddPattern() {
+            const kw = document.getElementById('newKeyword');
+            const src = document.getElementById('newSource');
+            if (PatternStorage.addPattern(kw.value, src.value)) {
+                kw.value = '';
+                src.value = '';
+                if (currentTransactions.length > 0) {
+                    currentTransactions = currentTransactions.map(i => classifyItem(i));
+                    renderDashboard(currentTransactions);
+                }
+            }
+        }
+
+        function loadSampleData() {
+            document.getElementById('depositsInput').value = 
+`2026-09-20 | PATREON*CREATOR | +500
+2026-09-21 | YOUTUBE PAYMENTS | +1200
+2026-09-22 | HOSTING SERVER | -80
+2026-09-23 | ACH TRANSFER 8392 | +350
+2026-09-24 | PAYOUT 29384 | +150
+2026-09-25 | TRANSFER UNKNOWN | +75`;
+            processAndClassify();
+        }
+
+        function clearInput() {
+            document.getElementById('depositsInput').value = '';
+            document.getElementById('emptyState').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            currentTransactions = [];
+        }
+
+        function filterTable() {
+            const query = document.getElementById('tableSearch').value.toLowerCase();
+            const filtered = currentTransactions.filter(i => 
+                i.description.toLowerCase().includes(query) || i.source.toLowerCase().includes(query)
+            );
+            renderTable(filtered);
+        }
+
+        function exportCSV() {
+            if (currentTransactions.length === 0) return;
+            let csv = 'Fecha,Tipo,Monto,Fuente,Estado\n';
+            currentTransactions.forEach(i => {
+                csv += `"${i.date}","${i.type}","${i.amount}","${i.source}","${i.status}"\n`;
+            });
+            downloadFile(csv, 'movimientos.csv', 'text/csv');
+        }
+
+        function exportJSON() {
+            if (currentTransactions.length === 0) return;
+            downloadFile(JSON.stringify(currentTransactions, null, 2), 'movimientos.json', 'application/json');
+        }
+
+        function downloadFile(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto bg-gray-900 border border-gray-800 text-white text-xs px-4 py-2.5 rounded-xl shadow-xl transition-all duration-300`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        window.onload = () => { renderPatterns(); };
+    </script>
+</body>
+</html>
